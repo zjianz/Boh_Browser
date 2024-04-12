@@ -1,13 +1,13 @@
-import Utils
+import Utils.data_miner as data_miner
 
-aspect_list = Utils.json_reader(r'core/elements/_aspects.json')['elements']
-aspected_items_list = Utils.json_reader(r'core/elements/aspecteditems.json')['eements']
+aspect_list = data_miner.raw_json_reader(r'core/elements/_aspects.json')['elements']
+aspected_items_list = data_miner.raw_json_reader(r'core/elements/aspecteditems.json')['eements']
 
 # beast, beverage, blank, bust, cache, candle... are separated by "inherits"
 memory_list = [ d for d in aspected_items_list if d.get("inherits") == "_memory" ]
 
 
-tome_list = Utils.json_reader(r'core/elements/tomes.json')['elements']
+tome_list = data_miner.raw_json_reader(r'core/elements/tomes.json')['elements']
 # add tome to memory as a source
 for tome in tome_list:
     xtriggers = tome["xtriggers"]
