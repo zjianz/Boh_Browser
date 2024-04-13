@@ -22,8 +22,7 @@ def raw_json_reader(rel_dir):
         file = f.read()
         file_fixed = re.sub(r'\.[ ]\n', r'.', file)
         file_fixed = re.sub('ID', 'id', file_fixed)
-        file_fixed = re.sub(r'\.\n', r'.', file_fixed)
-        file_fixed = re.sub(r'\.\n', r'.', file_fixed) # Foolish...
+        file_fixed = re.sub(r'\n', r'', file_fixed) # Foolish...
         data = json.loads(file_fixed)
     return data
 
