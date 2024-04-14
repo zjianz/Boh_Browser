@@ -16,14 +16,30 @@ def detect_encoding(file_path): # Foolish...
         result = chardet.detect(raw_data)
         return result['encoding']
 
-def raw_json_reader(rel_dir):
+def raw_json_reader(rel_dir, main_key=None):
+    if isinstance(rel_dir, list):
+        # read multiple files together
+        data = {}
+        for file in rel_dir:
+            new_data = raw_json_reader(file, main_key)
+            data.update(new_data)
+        return data
+
     file_dir = path.join(core_dir,rel_dir)
     with open(file_dir, 'r', encoding=detect_encoding(file_dir)) as f:
         file = f.read()
-        file_fixed = re.sub(r'\.[ ]\n', r'.', file)
-        file_fixed = re.sub('ID', 'id', file_fixed)
+        file_fixed = re.sub('ID|Id', 'id', file)
+        file_fixed = re.sub('Label', 'label', file_fixed)
+        file_fixed = re.sub('刃[ ]*', '刃', file_fixed)
         file_fixed = re.sub(r'\n', r'', file_fixed) # Foolish...
-        data = json.loads(file_fixed)
+        raw_data = json.loads(file_fixed)
+        if main_key == None:
+            main_key = next(iter(raw_data.keys()))
+        raw_data = json.loads(file_fixed)[main_key]
+    data = {}
+    for item in raw_data:
+        id = item.pop('id')
+        data[id] = item
     return data
 
 def write_to_storage(tar_file,tar_dist,version=GAME_VER,keep=5):
@@ -54,7 +70,7 @@ def write_to_storage(tar_file,tar_dist,version=GAME_VER,keep=5):
         except OSError as e:
             print(f"Error: {subdir_path} : {e.strerror}")
 
-def read_from_storage(tar_file,version=GAME_VER):
+def read_from_storage(tar_file,version=GAME_VER) -> dict:
     storage_dir_ver = path.join(storage_dir, version)
 
     subdirs = [d for d in os.listdir(storage_dir_ver) if path.isdir(path.join(storage_dir_ver, d))]
