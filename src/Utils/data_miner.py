@@ -31,7 +31,8 @@ def raw_json_reader(rel_dir, main_key=None):
         file_fixed = re.sub('ID|Id', 'id', file)
         file_fixed = re.sub('Label', 'label', file_fixed)
         file_fixed = re.sub('刃[ ]*', '刃', file_fixed)
-        file_fixed = re.sub(r'\n', r'', file_fixed) # Foolish...
+        file_fixed = re.sub(r'\s+', r'', file_fixed)
+        file_fixed = re.sub(r',]', r']', file_fixed) # Foolish...
         raw_data = json.loads(file_fixed)
         if main_key == None:
             main_key = next(iter(raw_data.keys()))
