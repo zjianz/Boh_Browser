@@ -4,16 +4,16 @@ import os,re
 
 # convert raw data to storage
 
-def add_source(opt_dist:dict, source_dist:dict):
-    for key, value in source_dist.items():
+def add_source(opt_dict:dict, source_dict:dict):
+    for key, value in source_dict.items():
         trig = value.get('xtriggers')
         if trig != None:
             for trig_type, trig_result in trig.items():
-                    result_ids = [result.get('id') for result in trig_result] if isinstance(trig_result, list) else [trig_result]
+                    result_ids = [result.get('id') for result in trig_result if result.get('morpheffect') == 'spawn'] if isinstance(trig_result, list) else []
                     trig_type = re.sub('^([^.]*)(?:\..*)?$', r'\1', trig_type)
                     for result_id in result_ids:
-                        if result_id in opt_dist:
-                            opt_item = opt_dist[result_id]
+                        if result_id in opt_dict:
+                            opt_item = opt_dict[result_id]
                             if not 'source' in opt_item:
                                 opt_item['source'] = {}
                             if trig_type in opt_item['source']:
@@ -21,19 +21,33 @@ def add_source(opt_dist:dict, source_dist:dict):
                             else:
                                 opt_item['source'][trig_type] = [key]
 
-def add_source_of_recipe(opt_dist:dict, recipe_dist:dict):
-    for key, value in recipe_dist.items():
+def add_source_of_recipe(opt_dict:dict, recipe_dict:dict):
+    for key, value in recipe_dict.items():
         effects = value.get('effects')
         if effects != None:
             for effect in effects.keys():
-                if effect in opt_dist:
-                    opt_item = opt_dist[effect]
+                if effect in opt_dict:
+                    opt_item = opt_dict[effect]
                     if not 'source' in opt_item:
                         opt_item['source'] = {}
                     if 'recipe' in opt_item['source']:
                         opt_item['source']['recipe'].append(value.get('reqs'))
                     else:
                         opt_item['source']['recipe'] = [value.get('reqs')]
+
+def apply_prototypes(prototype_dict: dict, tar_dict: dict) -> dict:
+    result = tar_dict.copy()
+    for key, value in tar_dict.items():
+        inherit = value.get('inherits')
+        if inherit == None:
+            continue
+        result[key].pop('inherits')
+        inherit_dict = prototype_dict.get(inherit)
+        if inherit_dict == None:
+            continue
+        inherit_dict = br.index_with_re(inherit_dict, re.compile(r'aspects|xtriggers|slots'), False)
+        result[key] = br.add_dict(result[key], inherit_dict)
+    return result
 
 def storage_zh():
     zh_files = []
@@ -57,7 +71,8 @@ def storage_zh():
 def storage_core():
     # need to excute after storage_zh
 
-    aspect_dict = DATA.raw_json_reader(r'elements/_aspects.json', 'elements')
+    aspect_dir = [ r'elements/_aspects.json', r'elements/_evolutionaspects.json' ]
+    aspect_dict = DATA.raw_json_reader(aspect_dir, 'elements')
     tome_dict = DATA.raw_json_reader(r'elements/tomes.json', 'elements')
     aspecteditems_dict = DATA.raw_json_reader(r'elements/aspecteditems.json', 'elements')
     ability_dirs = [r'elements/abilities.json',r'elements/abilities2.json',r'elements/abilities3.json',r'elements/abilities4.json']
@@ -78,23 +93,26 @@ def storage_core():
     library_world_dict = DATA.raw_json_reader(r'verbs/workstations_library_world.json', 'verbs')
 
     # unstoraged
-    protoptype_dict = DATA.raw_json_reader(r'elements/_prototypes.json', 'elements')
+    prototype_dict = DATA.raw_json_reader(r'elements/_prototypes.json', 'elements')
+
+    prototype_dict     = apply_prototypes(prototype_dict, prototype_dict)
+    aspecteditems_dict = apply_prototypes(prototype_dict, aspecteditems_dict)
 
     # separate memory out of aspected items
-    memory_dict = {}
-    for key,value in aspecteditems_dict.items():
-        if not 'inherits' in value:
-            continue
-        inherit = value.pop('inherits')
-        if inherit != None and inherit != '_':
-            inherit = re.sub('_([^\.]*).*',r'\1',inherit)
-            value['aspects'][inherit] = 1
-            if inherit == 'memory':
-                memory_dict[key] = aspecteditems_dict[key]
+    # memory_dict = {}
+    # for key,value in aspecteditems_dict.items():
+    #     if not 'inherits' in value:
+    #         continue
+    #     inherit = value.pop('inherits')
+    #     if inherit != None and inherit != '_':
+    #         inherit = re.sub('_([^\.]*).*',r'\1',inherit)
+    #         value['aspects'][inherit] = 1
+    #         if inherit == 'memory':
+    #             memory_dict[key] = aspecteditems_dict[key]
 
 
     # keep id, unique, aspects
-    br.keep_key(memory_dict,             [ 'aspects' ])
+    # br.keep_key(memory_dict,             [ 'aspects' ])
     br.keep_key(aspect_dict,             [ 'ishidden' ])
     br.keep_key(tome_dict,               [ 'aspects', 'slots', 'xtriggers' ])
     br.keep_key(abilities_dict,          [ 'aspects', 'xtriggers' ])
@@ -106,19 +124,18 @@ def storage_core():
     br.keep_key(gathering_dict,          [ 'hints', 'slots' ])
 
     # add to memory as a source
-    add_source(memory_dict, tome_dict)
-    add_source(memory_dict, aspecteditems_dict)
-    add_source(memory_dict, abilities_dict)
-    add_source(memory_dict, assistance_dict)
+    add_source(aspecteditems_dict, tome_dict)
+    add_source(aspecteditems_dict, aspecteditems_dict)
+    add_source(aspecteditems_dict, abilities_dict)
+    add_source(aspecteditems_dict, assistance_dict)
 
-    add_source_of_recipe(memory_dict,        craft_skill_relate_dict)
     add_source_of_recipe(aspecteditems_dict, craft_skill_relate_dict)
 
     # assistance inherits -> asstype via prototypes
     for key,value in assistance_dict.items():
         inherit = value.get('inherits')
         if inherit != None:
-            asstype = protoptype_dict[inherit]
+            asstype = prototype_dict[inherit]
             value['assistance_type'] = asstype.get('slots')
             value.pop('inherits')
             assistance_dict[key] = value
@@ -129,7 +146,7 @@ def storage_core():
     br.add_zh(aspect_dict)
     br.add_zh(tome_dict)
     br.add_zh(abilities_dict)
-    br.add_zh(memory_dict)
+    # br.add_zh(memory_dict)
     br.add_zh(assistance_dict)
     br.add_zh(skill_dict)
     br.add_zh(craft_skill_relate_dict)
@@ -141,10 +158,10 @@ def storage_core():
     DATA.write_to_storage(['elements','tome.json'], tome_dict)
     DATA.write_to_storage(['elements','abilities.json'], abilities_dict)
     DATA.write_to_storage(['elements','assistance.json'], assistance_dict)
-    DATA.write_to_storage(['elements','memory.json'], memory_dict)
+    # DATA.write_to_storage(['elements','memory.json'], memory_dict)
     DATA.write_to_storage(['elements','aspects.json'], aspect_dict)
     DATA.write_to_storage(['elements','skills.json'], skill_dict)
-    DATA.write_to_storage(['recipes', 'skill_relate.json'], craft_skill_relate_dict)
+    # DATA.write_to_storage(['recipes', 'skill_relate.json'], craft_skill_relate_dict)
     DATA.write_to_storage(['verbs',   'library_world.json'], library_world_dict)
     DATA.write_to_storage(['verbs',   'gathering.json'], gathering_dict)
     return

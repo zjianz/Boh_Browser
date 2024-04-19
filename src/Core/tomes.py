@@ -3,34 +3,34 @@ import re
 from Utils import browser as br
 
 from Utils.data_miner import read_from_storage
-tome_dist = read_from_storage(['elements','tome.json'])
+tome_dict = read_from_storage(['elements','tome.json'])
 
 class tome(base):
     def __init__(self, id: str):
-        dist = tome_dist.get(id)
-        super().__init__(id, dist)
+        dict_id = tome_dict.get(id)
+        super().__init__(id, dict_id)
         self.pic_dir = self.get_pic_dir()
 
         mystery_re = re.compile(r'^mystery\.(.*)$')
-        self.challenge = br.index_with_re(dist['aspects'], mystery_re)
+        self.challenge = br.index_with_re(dict_id['aspects'], mystery_re)
 
         award_re = re.compile(r'^mastering\.(.*)$')
-        award_list = br.get_first_value(br.index_with_re(dist['xtriggers'], award_re))
+        award_list = br.get_first_value(br.index_with_re(dict_id['xtriggers'], award_re))
         self.award = [ { re.sub(r'^x', r's', item.get('id')): item.get('level') } for item in award_list]
 
-        self.language = find_language(dist)
+        self.language = find_language(dict_id)
 
     def get_pic_dir(self):
         pic1 = super().get_pic_dir(self.id+'_')
         pic2 = super().get_pic_dir()
         return [pic1, pic2]
 
-def find_language(tar_dist: dict):
-    if not 'slots' in tar_dist:
+def find_language(tar_dict: dict):
+    if not 'slots' in tar_dict:
         return None
-    if not 'language' in tar_dist['slots']:
+    if not 'language' in tar_dict['slots']:
         return None
-    return br.get_first_key(tar_dist['slots'][0]['required'])
+    return br.get_first_key(tar_dict['slots'][0]['required'])
 
 if __name__ == '__main__':
     a=tome("t.apolloandmarsyas")

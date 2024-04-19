@@ -23,29 +23,43 @@ def search_by_aspect(tar_list, tar_aspect_dict):
     result = [d for d in tar_list if is_greater_than(d.get("aspects"), tar_aspect_dict)]
     return result
 
-def get_first_key(tar_dist: dict):
-    return next(iter(tar_dist.keys()))
+def add_dict(prev: dict, adder: dict) -> dict:
+    result = prev.copy()
+    for key_add, value_add in adder.items():
+        if not key_add in result:
+            result[key_add] = value_add
+        elif not type(result[key_add]) == type(value_add):
+            raise TypeError
+        else:
+            if isinstance(result[key_add], list):
+                result[key_add] += value_add
+            if isinstance(result[key_add], dict):
+                result[key_add] = add_dict(result[key_add], value_add)
+    return result
 
-def get_first_value(tar_dist: dict):
-    return tar_dist[get_first_key(tar_dist)]
+def get_first_key(tar_dict: dict):
+    return next(iter(tar_dict.keys()))
 
-def index_with_re(tar_dist: dict, tar_id: re.Pattern, catch = True, repl = r'\1') -> dict:
+def get_first_value(tar_dict: dict):
+    return tar_dict[get_first_key(tar_dict)]
+
+def index_with_re(tar_dict: dict, tar_id: re.Pattern, catch = True, repl = r'\1') -> dict:
     matched_items = {}
-    for key in tar_dist:
+    for key in tar_dict:
         if tar_id.match(key):
             if catch:
                 tar_key = re.sub(tar_id, repl, key)
             else:
                 tar_key = key
-            matched_items[tar_key] = tar_dist[key]
+            matched_items[tar_key] = tar_dict[key]
     return matched_items
 
-def add_zh(tar_dist: dict):
-    for key in tar_dist:
+def add_zh(tar_dict: dict):
+    for key in tar_dict:
         zh_v = get_zh(key)
         if zh_v != None:
-            tar_dist[key]['zh'] = zh_v
+            tar_dict[key]['zh'] = zh_v
 
 def get_zh(tar_id: str):
-    zh_dist = DATA.read_from_storage('zh.json')
-    return zh_dist.get(tar_id, None)
+    zh_dict = DATA.read_from_storage('zh.json')
+    return zh_dict.get(tar_id, None)

@@ -43,7 +43,7 @@ def raw_json_reader(rel_dir, main_key=None):
         data[id] = item
     return data
 
-def write_to_storage(tar_file,tar_dist,version=GAME_VER,keep=5):
+def write_to_storage(tar_file,tar_dict,version=GAME_VER,keep=5):
 
     storage_dir_ver = path.join(storage_dir, version)
     storage_dir_date = path.join(storage_dir_ver, str(date.today()))
@@ -59,7 +59,7 @@ def write_to_storage(tar_file,tar_dist,version=GAME_VER,keep=5):
 
     # overwrite file
     with open(file_dir, 'w+', encoding='utf-8') as file:
-        json.dump(tar_dist, file, skipkeys=True, ensure_ascii=False, indent=4)
+        json.dump(tar_dict, file, skipkeys=True, ensure_ascii=False, indent=4)
 
     # delete old folders
     subdirs = [d for d in os.listdir(storage_dir_ver) if path.isdir(path.join(storage_dir_ver, d))]
