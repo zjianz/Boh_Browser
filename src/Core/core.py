@@ -7,13 +7,7 @@ from Core.aspect  import Aspect,  aspect_dict
 from Core.skill   import Skill,   sill_dict
 from Core.tome    import Tome,    tome_dict
 from Core.station import Station, station_dict
-
-def reach(a:dict[str: int], target:dict[str: int], forbid:dict[str: int]):
-    if not all(key in a for key in target):
-        return False
-    if any(key in a for key in forbid):
-        return False
-    return all(a[key] >= target[key] for key in target)
+from Core.condition import Condition as Cd, CompositeCondition
 
 def get_zh_of_class(id: str, class_list:list[type]) -> str:
     for cls in class_list:
@@ -29,8 +23,6 @@ def print_item(item:Item, print_source:bool = True):
 
     # print source
     if print_source:
-        if not hasattr(item, 'source'):
-            item.source = {}
         for type, source_list in item.source.items():
             match type:
                 case 'reading':
@@ -47,25 +39,33 @@ def print_item(item:Item, print_source:bool = True):
                         print('\t\t' + Skill(skill_id).zh + ' + ' + aspect_text)
                 case 'scrutiny':
                     print('\t检查')
-                    for source in source_list[:5]:
-                        print('\t\t' + Item(source).zh)
+                    count = 0
+                    for source in source_list:
+                        if Item(source).zh == '' or count > 5:
+                            continue
+                        count += 1
+                        if count > 5:
+                            print('\t\t...')
+                        else:
+                            print('\t\t' + Item(source).zh)
                 case 'deck':
                     print('\t卡池')
                     for source in source_list:
                         print('\t\t' + source)
 
-def get_item_list_by_aspect(aspect_list: dict, forbid_list: dict={}, is_print:bool = False):
+def get_item_list_by_aspect(cond:CompositeCondition, is_print:bool = False):
     result = []
     for item_id in item_dict:
         item = Item(item_id)
         aspect_item = item.aspects
         if item.zh == '':
             continue
-        if reach(aspect_item, aspect_list, forbid_list):
+        if cond.evaluate(aspect_item):
             result.append(item)
             if is_print:
                 print_item(item)
     return result
 
 if __name__ == '__main__':
-    a = get_item_list_by_aspect({'grail': 1, 'tool': 1}, is_print=True)
+    cond = (Cd('e.illumination') | Cd('e.Bosk')) & (Cd('grail') | Cd('sky')) & (Cd('grail') | Cd('sky'))
+    a = get_item_list_by_aspect(cond, is_print=True)
