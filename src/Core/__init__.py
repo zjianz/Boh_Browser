@@ -1,10 +1,13 @@
 from Utils import textrue_dir
 from os import path
 
-class base():
+class BaseItem():
     def __init__(self, id: str, dict_id: dict):
         self.id = id
-        self.zh = dict_id['zh']
+        if dict_id is not None:
+            self.zh = dict_id.get('zh', '')
+        else:
+            self.zh = ''
         self.pic_dir = self.get_pic_dir()
 
     def get_pic_dir(self, id = None):

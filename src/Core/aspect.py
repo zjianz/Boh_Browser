@@ -1,16 +1,17 @@
-from . import base
+from . import BaseItem
 from Utils import browser as br
 import re
 
 from Utils.data_miner import read_from_storage
 aspect_dict = read_from_storage(['elements','aspects.json'])
 
-class aspect(base):
+class Aspect(BaseItem):
     def __init__(self, id: str):
         dict_id = aspect_dict.get(id)
-
         super().__init__(id, dict_id)
-        self.pic_dir = self.get_pic_dir()
+        
+        if dict_id is not None:
+            self.pic_dir = self.get_pic_dir()
 
     def get_pic_dir(self):
         tran_dict = {
@@ -25,4 +26,4 @@ class aspect(base):
 
 
 if __name__ == '__main__':
-    a = aspect("moon")
+    a = Aspect("moon")

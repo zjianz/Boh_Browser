@@ -13,16 +13,6 @@ def keep_key(tar_dict, key_list):
         new_value = {v_key: value.get(v_key) for v_key in value.keys() if re.match(full_pattern, v_key)}
         tar_dict[key] = new_value
 
-def is_greater_than(a, b):
-    if not all(key in a for key in b):
-        return False
-    return all(a[key] > b[key] for key in b)
-
-def search_by_aspect(tar_list, tar_aspect_dict):
-    # all target that has aspect higher than tar_aspect_dict
-    result = [d for d in tar_list if is_greater_than(d.get("aspects"), tar_aspect_dict)]
-    return result
-
 def add_dict(prev: dict, adder: dict) -> dict:
     result = prev.copy()
     for key_add, value_add in adder.items():
@@ -57,7 +47,7 @@ def index_with_re(tar_dict: dict, tar_id: re.Pattern, catch = True, repl = r'\1'
 def add_zh(tar_dict: dict):
     for key in tar_dict:
         zh_v = get_zh(key)
-        if zh_v != None:
+        if zh_v is not None:
             tar_dict[key]['zh'] = zh_v
 
 def get_zh(tar_id: str):
