@@ -4,12 +4,39 @@ import os,re
 
 # convert raw data to storage
 
-def add_source_of_trigger(opt_dict:dict, source_dict:dict):
+def apply_indexed(tar):
+    """
+    convert [ {'id': 'idx', ...} ... ]
+    into    { 'idx': {...}, ... }
+    for every level
+    """
+    if isinstance(tar, list):
+        if len(tar) > 0 and isinstance(tar[0], dict) and 'id' in tar[0]:
+            # need modify
+            result = {}
+            for item in tar:
+                id_item = item.pop('id')
+                new_item = apply_indexed(item)
+                result[id_item] = new_item
+        else:
+            result = []
+            for item in tar:
+                result.append(apply_indexed(item))
+        return result
+    if isinstance(tar, dict):
+        result = {}
+        for key in tar:
+            result[key] = apply_indexed(tar[key])
+        return result
+    return tar
+
+
+def add_source_of_xtrigger(opt_dict:dict, source_dict:dict):
     for key, value in source_dict.items():
         trig = value.get('xtriggers')
         if trig is not None:
             for trig_type, trig_result in trig.items():
-                    result_ids = [result.get('id') for result in trig_result if result.get('morpheffect') == 'spawn'] if isinstance(trig_result, list) else []
+                    result_ids = [id_res for id_res in trig_result if trig_result[id_res].get('morpheffect') == 'spawn'] if isinstance(trig_result, dict) else [trig_result]
                     trig_type = re.sub('^([^.]*)(?:\..*)?$', r'\1', trig_type)
                     for result_id in result_ids:
                         if result_id in opt_dict:
@@ -31,9 +58,9 @@ def add_source_of_recipe(opt_dict:dict, recipe_dict:dict):
                     if not 'source' in opt_item:
                         opt_item['source'] = {}
                     if 'recipe' in opt_item['source']:
-                        opt_item['source']['recipe'].append(value.get('reqs'))
+                        opt_item['source']['recipe'].append(key)
                     else:
-                        opt_item['source']['recipe'] = [value.get('reqs')]
+                        opt_item['source']['recipe'] = [key]
 
 def add_source_of_deck(opt_dict:dict, deck_dict:dict):
     for key, value in deck_dict.items():
@@ -50,6 +77,41 @@ def add_source_of_deck(opt_dict:dict, deck_dict:dict):
                     else:
                         opt_item['source']['deck'] = [key]
 
+def add_source_of_mastering(skill_dict:dict, tome_dict:dict):
+    for key, value in tome_dict.items():
+        master_re = re.compile(r'^mastering\.(.*)$')
+        lesson_re  = re.compile(r'^x\.(.*)$')
+        lesson_dict = br.index_with_re(
+                    br.get_first_value(br.index_with_re(value['xtriggers'], master_re)),
+                    lesson_re, True, r's.\1'
+                )
+        skill_id = br.get_first_key(lesson_dict)
+        if skill_id in skill_dict:
+            if not 'source' in skill_dict[skill_id]:
+                skill_dict[skill_id]['source'] = []
+            skill_dict[skill_id]['source'].append(key)
+
+def add_recipe(skill_dict:dict, recipe_dict:dict):
+    for key, value in recipe_dict.items():
+        skill_re = re.compile(r'^s\.(.*)')
+        skill_item = br.index_with_re(value['reqs'], skill_re, False)
+        if skill_item != {}:
+            skill_id = br.get_first_key(skill_item)
+            effects = br.get_first_key({k: v for k,v in value['effects'].items() if v > 0})
+            if skill_id in skill_dict:
+                if not 'recipes' in skill_dict[skill_id]:
+                    skill_dict[skill_id]['recipes'] = {}
+                skill_dict[skill_id]['recipes'][key] = effects
+        aspect_re = re.compile(r'^skill\.(.*)')
+        aspect_item = br.index_with_re(value['reqs'], aspect_re, False)
+        if aspect_item != {}:
+            aspect_id = br.get_first_key(aspect_item)
+            effects = br.get_first_key({k: v for k,v in value['effects'].items() if v > 0})
+            for skill_id in skill_dict:
+                if aspect_id in skill_dict[skill_id]['aspects']:
+                    if not 'recipes' in skill_dict[skill_id]:
+                        skill_dict[skill_id]['recipes'] = {}
+                    skill_dict[skill_id]['recipes'][key] = effects
 
 def apply_prototypes(prototype_dict: dict, tar_dict: dict) -> dict:
     result = tar_dict.copy()
@@ -72,7 +134,7 @@ def storage_zh():
                 if file.endswith('.json'):
                     file_path = os.path.join(root, file)
                     zh_files.append(file_path)
-    zh_data = DATA.raw_json_reader(zh_files)
+    zh_data = apply_indexed(DATA.raw_json_reader(zh_files))
 
     new_zh_data = {}
     for id in zh_data:
@@ -88,71 +150,62 @@ def storage_core():
     # need to excute after storage_zh
 
     aspect_dir = [ r'elements/_aspects.json', r'elements/_evolutionaspects.json' ]
-    aspect_dict = DATA.raw_json_reader(aspect_dir, 'elements')
-    tome_dict = DATA.raw_json_reader(r'elements/tomes.json', 'elements')
+    aspect_dict = apply_indexed(DATA.raw_json_reader(aspect_dir, 'elements'))
+    tome_dict = apply_indexed(DATA.raw_json_reader(r'elements/tomes.json', 'elements'))
     aspecteditems_dir = [ r'elements/aspecteditems.json', r'elements/incidents_weather.json' ]
-    aspecteditems_dict = DATA.raw_json_reader(aspecteditems_dir, 'elements')
+    aspecteditems_dict = apply_indexed(DATA.raw_json_reader(aspecteditems_dir, 'elements'))
     ability_dirs = [r'elements/abilities.json',r'elements/abilities2.json',r'elements/abilities3.json',r'elements/abilities4.json']
-    abilities_dict = DATA.raw_json_reader(ability_dirs, 'elements')
-    assistance_dict = DATA.raw_json_reader(r'elements/assistance.json', 'elements')
-    skill_dict = DATA.raw_json_reader(r'elements/skills.json', 'elements')
+    abilities_dict = apply_indexed(DATA.raw_json_reader(ability_dirs, 'elements'))
+    assistance_dict = apply_indexed(DATA.raw_json_reader(r'elements/assistance.json', 'elements'))
+    skill_dict = apply_indexed(DATA.raw_json_reader(r'elements/skills.json', 'elements'))
 
     # recipes
-    craft_skill_relate_dirs = [r'recipes/crafting_2_keeper.json',r'recipes/crafting_3_scholar.json',r'recipes/crafting_4b_prentice.json',]
-    craft_skill_aspect_relate_dirs = [r'recipes/crafting_1_chandlery.json']
-    craft_skill_relate_dict = DATA.raw_json_reader(craft_skill_relate_dirs, 'recipes')
+    recipe_dirs = [r'recipes/crafting_2_keeper.json',r'recipes/crafting_3_scholar.json',r'recipes/crafting_4b_prentice.json',r'recipes/crafting_1_chandlery.json']
+    recipe_dict = apply_indexed(DATA.raw_json_reader(recipe_dirs, 'recipes'))
 
-    talk_beast_dict = DATA.raw_json_reader(r'recipes/beasts.json', 'recipes')
+    talk_beast_dict = apply_indexed(DATA.raw_json_reader(r'recipes/beasts.json', 'recipes'))
 
     # work station
-    bed_dict = DATA.raw_json_reader(r'verbs/workstations_beds.json', 'verbs')
-    gathering_dict = DATA.raw_json_reader(r'verbs/workstations_gathering.json', 'verbs')
-    library_world_dict = DATA.raw_json_reader(r'verbs/workstations_library_world.json', 'verbs')
+    bed_dict = apply_indexed(DATA.raw_json_reader(r'verbs/workstations_beds.json', 'verbs'))
+    gathering_dict = apply_indexed(DATA.raw_json_reader(r'verbs/workstations_gathering.json', 'verbs'))
+    library_world_dict = apply_indexed(DATA.raw_json_reader(r'verbs/workstations_library_world.json', 'verbs'))
 
     # unstoraged
-    prototype_dict = DATA.raw_json_reader(r'elements/_prototypes.json', 'elements')
+    prototype_dict = apply_indexed(DATA.raw_json_reader(r'elements/_prototypes.json', 'elements'))
     deck_dir = [ r'decks/catalogue_decks.json', r'decks/challenges.json', r'decks/chats.json', r'decks/gathering_decks.json', r'decks/incidents_decks.json' ]
-    deck_dict = DATA.raw_json_reader(deck_dir, 'decks')
-
-    prototype_dict     = apply_prototypes(prototype_dict, prototype_dict)
-    aspecteditems_dict = apply_prototypes(prototype_dict, aspecteditems_dict)
-
-    # separate memory out of aspected items
-    # memory_dict = {}
-    # for key,value in aspecteditems_dict.items():
-    #     if not 'inherits' in value:
-    #         continue
-    #     inherit = value.pop('inherits')
-    #     if inherit is not None and inherit != '_':
-    #         inherit = re.sub('_([^\.]*).*',r'\1',inherit)
-    #         value['aspects'][inherit] = 1
-    #         if inherit == 'memory':
-    #             memory_dict[key] = aspecteditems_dict[key]
+    deck_dict = apply_indexed(DATA.raw_json_reader(deck_dir, 'decks'))
 
 
     # keep id, unique, aspects
-    # br.keep_key(memory_dict,             [ 'aspects' ])
-    br.keep_key(aspect_dict,             [ 'ishidden' ])
-    br.keep_key(tome_dict,               [ 'aspects', 'slots', 'xtriggers' ])
-    br.keep_key(abilities_dict,          [ 'aspects', 'xtriggers' ])
-    br.keep_key(assistance_dict,         [ 'aspects', 'slots', 'xtriggers', 'inherits' ])
-    br.keep_key(aspecteditems_dict,      [ 'aspects', 'xtriggers' ])
-    br.keep_key(skill_dict,              [ 'aspects', 'ambits' ])
-    br.keep_key(craft_skill_relate_dict, [ 'reqs', 'effects', 'craftable' ])
-    br.keep_key(library_world_dict,      [ 'hints', 'slots', 'aspects' ])
-    br.keep_key(gathering_dict,          [ 'hints', 'slots' ])
+    br.keep_key(aspect_dict,             [ 'inherits', 'ishidden' ])
+    br.keep_key(tome_dict,               [ 'inherits', 'aspects', 'slots', 'xtriggers' ])
+    br.keep_key(abilities_dict,          [ 'inherits', 'aspects', 'xtriggers' ])
+    br.keep_key(assistance_dict,         [ 'inherits', 'aspects', 'slots', 'xtriggers' ])
+    br.keep_key(aspecteditems_dict,      [ 'inherits', 'aspects', 'xtriggers' ])
+    br.keep_key(skill_dict,              [ 'inherits', 'aspects', 'ambits' ])
+    br.keep_key(recipe_dict,             [ 'inherits', 'reqs', 'effects', 'craftable' ])
+    br.keep_key(library_world_dict,      [ 'inherits', 'hints', 'slots', 'aspects' ])
+    br.keep_key(gathering_dict,          [ 'inherits', 'hints', 'slots' ])
+    br.keep_key(prototype_dict,          [ 'inherits', 'aspects', 'slots', 'xtriggers' ])
+
+    prototype_dict     = apply_prototypes(prototype_dict, prototype_dict)
+    aspecteditems_dict = apply_prototypes(prototype_dict, aspecteditems_dict)
+    tome_dict          = apply_prototypes(prototype_dict, tome_dict)
 
     # add source
     for keys in aspecteditems_dict:
         aspecteditems_dict[keys]['source'] = {}
-    add_source_of_trigger(aspecteditems_dict, tome_dict)
-    add_source_of_trigger(aspecteditems_dict, aspecteditems_dict)
-    add_source_of_trigger(aspecteditems_dict, abilities_dict)
-    add_source_of_trigger(aspecteditems_dict, assistance_dict)
+    add_source_of_xtrigger(aspecteditems_dict, tome_dict)
+    add_source_of_xtrigger(aspecteditems_dict, aspecteditems_dict)
+    add_source_of_xtrigger(aspecteditems_dict, abilities_dict)
+    add_source_of_xtrigger(aspecteditems_dict, assistance_dict)
 
-    add_source_of_recipe(aspecteditems_dict, craft_skill_relate_dict)
+    add_source_of_recipe(aspecteditems_dict, recipe_dict)
 
     add_source_of_deck(aspecteditems_dict,deck_dict)
+
+    add_source_of_mastering(skill_dict, tome_dict)
+    add_recipe(skill_dict, recipe_dict)
 
     # assistance inherits -> asstype via prototypes
     for key,value in assistance_dict.items():
@@ -169,10 +222,9 @@ def storage_core():
     br.add_zh(aspect_dict)
     br.add_zh(tome_dict)
     br.add_zh(abilities_dict)
-    # br.add_zh(memory_dict)
     br.add_zh(assistance_dict)
     br.add_zh(skill_dict)
-    br.add_zh(craft_skill_relate_dict)
+    br.add_zh(recipe_dict)
     br.add_zh(library_world_dict)
     br.add_zh(gathering_dict)
 
@@ -181,12 +233,13 @@ def storage_core():
     DATA.write_to_storage(['elements','tome.json'], tome_dict)
     DATA.write_to_storage(['elements','abilities.json'], abilities_dict)
     DATA.write_to_storage(['elements','assistance.json'], assistance_dict)
-    # DATA.write_to_storage(['elements','memory.json'], memory_dict)
     DATA.write_to_storage(['elements','aspects.json'], aspect_dict)
     DATA.write_to_storage(['elements','skills.json'], skill_dict)
-    # DATA.write_to_storage(['recipes', 'skill_relate.json'], craft_skill_relate_dict)
+    DATA.write_to_storage(['recipes', 'recipe.json'], recipe_dict)
     DATA.write_to_storage(['verbs',   'library_world.json'], library_world_dict)
     DATA.write_to_storage(['verbs',   'gathering.json'], gathering_dict)
+    DATA.write_to_storage(['unused',  'decks.json'], deck_dict)
+    DATA.write_to_storage(['unused',  'prototype.json'], prototype_dict)
     return
 
 def Update():

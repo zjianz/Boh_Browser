@@ -5,6 +5,8 @@ class Condition:
         self.value = value
 
     def evaluate(self, data: dict) -> bool:
+        if self.key == None:
+            return True
         if self.key not in data:
             return False
         value = data[self.key]

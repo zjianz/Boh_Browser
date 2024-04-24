@@ -19,10 +19,10 @@ def detect_encoding(file_path): # Foolish...
 def raw_json_reader(rel_dir, main_key=None):
     if isinstance(rel_dir, list):
         # read multiple files together
-        data = {}
+        data = []
         for file in rel_dir:
             new_data = raw_json_reader(file, main_key)
-            data.update(new_data)
+            data = data + new_data
         return data
 
     file_dir = path.join(core_dir,rel_dir)
@@ -37,11 +37,7 @@ def raw_json_reader(rel_dir, main_key=None):
         if main_key == None:
             main_key = next(iter(raw_data.keys()))
         raw_data = json.loads(file_fixed)[main_key]
-    data = {}
-    for item in raw_data:
-        id = item.pop('id')
-        data[id] = item
-    return data
+    return raw_data
 
 def write_to_storage(tar_file,tar_dict,version=GAME_VER,keep=5):
 
