@@ -23,11 +23,19 @@ def add_dict(prev: dict, adder: dict) -> dict:
         else:
             if isinstance(result[key_add], list):
                 result[key_add] += value_add
-            if isinstance(result[key_add], dict):
+            elif isinstance(result[key_add], dict):
                 result[key_add] = add_dict(result[key_add], value_add)
+            elif hasattr(result[key_add],'__add__'):
+                new_value = result[key_add] + value_add
+                if new_value:
+                    result[key_add] = new_value
+                else:
+                    result.pop(key_add)
     return result
 
 def get_first_key(tar_dict: dict):
+    if tar_dict == {}:
+        return None
     return next(iter(tar_dict.keys()))
 
 def get_first_value(tar_dict: dict):

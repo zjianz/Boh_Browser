@@ -14,7 +14,7 @@ class Item(BaseItem):
             self.source = dict_id.get('source')
             self.aspects = br.index_with_re(dict_id['aspects'], re.compile(r'(?!boost).*$'), False)
 
-    def print(self, print_source:bool = True):
+    def print(self, print_source:bool = True, pic_dir:bool = False):
 
         from Core.aspect import Aspect
         from Core.tome import Tome
@@ -22,7 +22,7 @@ class Item(BaseItem):
         from Core.recipe import Recipe
 
         aspect_text = '+'.join([ f'{value}'+Aspect(aspect_id).zh for aspect_id, value in self.aspects.items() if Aspect(aspect_id).zh != '' ])
-        print(self.zh + f'({aspect_text}): ' + self.id)
+        print(self.zh + f'({aspect_text}): ' + (self.pic_dir if pic_dir else self.id))
 
         # print source
         if print_source:
@@ -31,15 +31,22 @@ class Item(BaseItem):
                     case 'reading':
                         print('\t读书')
                         for source in source_list:
-                            print('\t\t' + Tome(source).zh + f' ({Tome(source).id})')
+                            challenge_text = ' '.join([ f'{level}{Aspect(key).zh}' for key,level in Tome(source).challenge.items() ])
+                            print('\t\t' + Tome(source).zh + f'({challenge_text}): {Tome(source).pic_dir[0] if pic_dir else Tome(source).id}')
                     case 'recipe':
                         print('\t合成')
                         for source in source_list:
                             recipe_id = Recipe(source)
-                            skill_id = recipe_id.skill
-                            req_text = ' + '.join([ f'{level}{Aspect(key).zh}' for key,level in recipe_id.reqs['aspects'].items() ] + [ f'{level}{Item(key).zh}' for key,level in recipe_id.reqs['item'].items() ])
-                            print('\t\t' + get_zh_with_class(skill_id, [Skill, Aspect]) + ' + ' + req_text)
-                    case 'scrutiny':
+                            skill_req = recipe_id.skills
+                            req_text = ' + '.join([ f'{level}{Aspect(key).zh}' for key,level in recipe_id.reqs['aspects'].items() ] + [ f'{level}{Item(key).zh}: {Item(key).id}' for key,level in recipe_id.reqs['item'].items() ])
+                            skill_text = '/'.join([ f'{Skill(skill_id).zh}' for skill_id in skill_req or {} ])
+                            if skill_text:
+                                print('\t\t' + skill_text + ' + ' + req_text)
+                            elif req_text:
+                                print('\t\t' + req_text)
+                            else:
+                                print('\t\t' + source)
+                    case 'scrutiny' | 'dist':
                         print('\t检查')
                         count = 0
                         for source in source_list:
@@ -49,7 +56,7 @@ class Item(BaseItem):
                             if count > 5:
                                 print('\t\t...')
                             else:
-                                print('\t\t' + Item(source).zh)
+                                print('\t\t' + Item(source).zh + f' {Item(source).pic_dir if pic_dir else Item(source).id}')
                     case 'deck':
                         print('\t卡池')
                         for source in source_list:

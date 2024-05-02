@@ -53,6 +53,8 @@ def add_source_of_recipe(opt_dict:dict, recipe_dict:dict):
         effects = value.get('effects')
         if effects is not None:
             for effect in effects.keys():
+                if effects[effect] < 0:
+                    continue
                 if effect in opt_dict:
                     opt_item = opt_dict[effect]
                     if not 'source' in opt_item:
@@ -94,7 +96,7 @@ def add_source_of_mastering(skill_dict:dict, tome_dict:dict):
 def add_recipe(skill_dict:dict, recipe_dict:dict):
     for key, value in recipe_dict.items():
         skill_re = re.compile(r'^s\.(.*)')
-        skill_item = br.index_with_re(value['reqs'], skill_re, False)
+        skill_item = br.index_with_re(value.get('reqs',{}), skill_re, False)
         if skill_item != {}:
             skill_id = br.get_first_key(skill_item)
             effects = br.get_first_key({k: v for k,v in value['effects'].items() if v > 0})
@@ -103,7 +105,7 @@ def add_recipe(skill_dict:dict, recipe_dict:dict):
                     skill_dict[skill_id]['recipes'] = {}
                 skill_dict[skill_id]['recipes'][key] = effects
         aspect_re = re.compile(r'^skill\.(.*)')
-        aspect_item = br.index_with_re(value['reqs'], aspect_re, False)
+        aspect_item = br.index_with_re(value.get('reqs',{}), aspect_re, False)
         if aspect_item != {}:
             aspect_id = br.get_first_key(aspect_item)
             effects = br.get_first_key({k: v for k,v in value['effects'].items() if v > 0})
@@ -160,7 +162,13 @@ def storage_core():
     skill_dict = apply_indexed(DATA.raw_json_reader(r'elements/skills.json', 'elements'))
 
     # recipes
-    recipe_dirs = [r'recipes/crafting_2_keeper.json',r'recipes/crafting_3_scholar.json',r'recipes/crafting_4b_prentice.json',r'recipes/crafting_1_chandlery.json']
+    recipe_dirs = [r'recipes/crafting_2_keeper.json',
+                   r'recipes/crafting_3_scholar.json',
+                   r'recipes/crafting_4b_prentice.json',
+                   r'recipes/crafting_1_chandlery.json',
+                   r'recipes/crafting_1_simplemanipulations.json',
+                   r'recipes/gathering_2_seasonal.json'
+                   ]
     recipe_dict = apply_indexed(DATA.raw_json_reader(recipe_dirs, 'recipes'))
 
     talk_beast_dict = apply_indexed(DATA.raw_json_reader(r'recipes/beasts.json', 'recipes'))
@@ -183,7 +191,7 @@ def storage_core():
     br.keep_key(assistance_dict,         [ 'inherits', 'aspects', 'slots', 'xtriggers' ])
     br.keep_key(aspecteditems_dict,      [ 'inherits', 'aspects', 'xtriggers' ])
     br.keep_key(skill_dict,              [ 'inherits', 'aspects', 'ambits' ])
-    br.keep_key(recipe_dict,             [ 'inherits', 'reqs', 'effects', 'craftable' ])
+    br.keep_key(recipe_dict,             [ 'inherits', 'reqs', 'effects', 'craftable', 'actionid', 'deckeffects' ])
     br.keep_key(library_world_dict,      [ 'inherits', 'hints', 'slots', 'aspects' ])
     br.keep_key(gathering_dict,          [ 'inherits', 'hints', 'slots' ])
     br.keep_key(prototype_dict,          [ 'inherits', 'aspects', 'slots', 'xtriggers' ])
@@ -191,6 +199,8 @@ def storage_core():
     prototype_dict     = apply_prototypes(prototype_dict, prototype_dict)
     aspecteditems_dict = apply_prototypes(prototype_dict, aspecteditems_dict)
     tome_dict          = apply_prototypes(prototype_dict, tome_dict)
+    abilities_dict     = apply_prototypes(prototype_dict, abilities_dict)
+    recipe_dict        = apply_prototypes(prototype_dict, recipe_dict)
 
     # add source
     for keys in aspecteditems_dict:

@@ -5,8 +5,8 @@ class BaseItem():
     def __init__(self, id: str, dict_id: dict):
         self.id = id
         if dict_id is not None:
-            self.zh = dict_id.get('zh', '')
-            self.aspects = dict_id.get('aspects')
+            self.zh:str = dict_id.get('zh', '')
+            self.aspects:dict = dict_id.get('aspects')
         else:
             self.zh = ''
         self.pic_dir = self.get_pic_dir()
@@ -23,6 +23,8 @@ class BaseItem():
         pass
 
 def get_zh_with_class(id: str, class_list:list[type]) -> str:
+    if id == None:
+        return ''
     for cls in class_list:
         test_obj = cls(id)
         if test_obj.zh != '':
