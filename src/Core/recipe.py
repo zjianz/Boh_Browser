@@ -68,11 +68,10 @@ def Tome_recipe(tome:Tome)->Recipe:
     recipe = Recipe(tome.id)
     recipe.id = tome.id
     recipe.zh = f'阅读书目：{tome.zh}'
-    recipe.skills = {tome.language: 1} or {}
+    recipe.skills = {tome.language: 1} if tome.language else {}
     recipe.reqs = { 'aspects':tome.challenge, 'item':{tome.id: 1} }
     recipe.effect = tome.lesson
-    if recipe.skills:
-        recipe.extra_slot = {'language':{'required':{tome.language:1}}}
+    recipe.extra_slot = {'language':{'required':{tome.language:1}}} if recipe.skills else None
     return recipe
 
 if __name__ == '__main__':

@@ -31,10 +31,10 @@ def low_q_station_finder(recipe:Recipe, preset_items:dict={}) -> list[Station]:
         'item' : a list of item instances, include all items you already decided
     """
     result = []
-    skill_preset = preset_items.get('skill')
-    if recipe.skills is not None and skill_preset is not None:
+    skill_preset = preset_items.get('skill',{})
+    if recipe.skills and skill_preset:
         skill_preset = br.add_dict(skill_preset,{skill_id: level for skill_id, level in recipe.skills.items() if not skill_id in skill_preset})
-    if skill_preset == None:
+    if not skill_preset:
         skill_preset = recipe.skills
 
     item_preset = preset_items.get('item', [])
@@ -49,13 +49,29 @@ def low_q_station_finder(recipe:Recipe, preset_items:dict={}) -> list[Station]:
                 else:
                     item_preset.append(Item(item_id))
 
-    #loop
+    # speed up
+    special_aspects = ['sound','instrument','tool','liquid','metal','flower','egg','wood']
+    candidate_aspect = [aspect for aspect in special_aspects if aspect in recipe.reqs['aspects']]
+    candidate_lists = [[Item(item_id) for item_id in item_dict if aspect in Item(item_id).aspects] for aspect in candidate_aspect]
+    prev_list = []
     for station_id in station_dict:
+        station = Station(station_id)
+        for candidate_list in candidate_lists:
+            if any([station.fill(candidate) for candidate in candidate_list]):
+                station.reset()
+            else:
+                station.reset()
+                break
+        else:
+            prev_list.append(station_id)
+
+    #loop
+    for station_id in prev_list:
         station = Station(station_id)
         if recipe.extra_slot:
             for id, slot_dict in recipe.extra_slot.items():
                 station.slots[id] = Slot(slot_dict)
-        if recipe.skills is not None:
+        if skill_preset:
             # need to loop skills
             for skill_id, level in skill_preset.items():
                 skill = Skill(skill_id, level)
@@ -63,16 +79,19 @@ def low_q_station_finder(recipe:Recipe, preset_items:dict={}) -> list[Station]:
                     # fill in all items
                     if all([ station.fill(item) for item in item_preset ]):
                         result.append(station)
+        else:
+            if all([ station.fill(item) for item in item_preset ]):
+                result.append(station)
     return result
 
-def high_q_station_finder(recipe:Recipe, preset_items:dict={}, is_print:bool=False) -> list[Station]:
+def high_q_station_finder(recipe:Recipe, preset_items:dict={}, is_print:bool=False, print_id:bool=False) -> list[Station]:
     """
     preset_items: a dict which contains these keys:
         'skill': a dict of skill_id: skill_level, convering the skill you willing to use
         'item' : a list of item instances, include all items you already decided
     """
-    skill_preset = preset_items.get('skill')
-    if recipe.skills is not None and skill_preset is not None:
+    skill_preset = preset_items.get('skill',{})
+    if recipe.skills and skill_preset :
         skill_preset = br.add_dict(skill_preset,{skill_id: level for skill_id, level in recipe.skills.items() if not skill_id in skill_preset})
     if skill_preset == None:
         skill_preset = recipe.skills
@@ -97,7 +116,7 @@ def high_q_station_finder(recipe:Recipe, preset_items:dict={}, is_print:bool=Fal
     for station in station_list:
         to_be_filled = [ key for key in station.slots if not station.slots[key].is_filled() ]
         locked = [ key for key in station.slots if station.slots[key].is_filled() ]
-        valid_items = [[item for item in canditates if station.slots[key].judge(item)] for key in to_be_filled]
+        valid_items = [[item for item in canditates if station.slots[key].judge(item) and not item.id in recipe.effect and not Cd('numen').evaluate(item.aspects) ] for key in to_be_filled]
         for combo in itertools.product(*valid_items):
             if all([station.fill(item,locked) for item in combo]) and recipe.isfull(station.total):
                 result.append(station)
@@ -109,12 +128,11 @@ def high_q_station_finder(recipe:Recipe, preset_items:dict={}, is_print:bool=Fal
         if skill_preset:
             recipe_text += f'({"+".join(Skill(skill_id,level).zh for skill_id,level in skill_preset.items())})'
         if item_preset:
-            recipe_text += f'({"+".join([item.zh for item in item_preset])})'
+            recipe_text += f'({"+".join([f"{item.zh}" for item in item_preset])})'
         print(recipe_text)
         print('可用工作站及示例配方：')
         for station in result:
-            print('\t' + station.zh)
-            print('\t\t' + ' + '.join([slot.item.zh for slot in station.slots.values()]))
+            station.print(print_id)
     return result
 
 
@@ -123,3 +141,4 @@ def high_q_station_finder(recipe:Recipe, preset_items:dict={}, is_print:bool=Fal
 if __name__ == '__main__':
     print("ite = get_item_list_by_aspect(Cd('memory')&~Cd('numen'),1,1)")
     recipe = Recipe('craft.keeper.inks.containment_winter_liquid.solomon_nillycant')
+    print("result = high_q_station_finder(recipe,{},1,1)")

@@ -19,9 +19,6 @@ class BaseItem():
             return dir
         return None
 
-    def print(self):
-        pass
-
 def get_zh_with_class(id: str, class_list:list[type]) -> str:
     if id == None:
         return ''

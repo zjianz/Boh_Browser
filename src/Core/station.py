@@ -112,6 +112,10 @@ class Station(BaseItem):
     def is_full(self):
         return all([ slot.is_filled() for slot in self.slots.values() ])
 
+    def print(self, print_id:bool=False):
+        print('\t' + self.zh)
+        print('\t\t' + '+'.join([f'{slot.item.zh}' + (f'({slot.item.id})' if print_id else '') for slot in self.slots.values()]))
+
 if __name__ == '__main__':
     a = Station("library.telescope")
     from Core.item import Item

@@ -14,6 +14,12 @@ class Item(BaseItem):
             self.source = dict_id.get('source')
             self.aspects = br.index_with_re(dict_id['aspects'], re.compile(r'(?!boost).*$'), False)
 
+    def recipe(self, index:int):
+        if 'recipe' in self.source and len(self.source['recipe']) > index:
+            recipe_id = self.source['recipe'][index]
+            from Core.recipe import Recipe
+            return Recipe(recipe_id)
+
     def print(self, print_source:bool = True, pic_dir:bool = False):
 
         from Core.aspect import Aspect
@@ -22,7 +28,7 @@ class Item(BaseItem):
         from Core.recipe import Recipe
 
         aspect_text = '+'.join([ f'{value}'+Aspect(aspect_id).zh for aspect_id, value in self.aspects.items() if Aspect(aspect_id).zh != '' ])
-        print(self.zh + f'({aspect_text}): ' + (self.pic_dir if pic_dir else self.id))
+        print(self.zh + f'({aspect_text}): ' + (self.pic_dir if pic_dir and self.pic_dir else self.id))
 
         # print source
         if print_source:

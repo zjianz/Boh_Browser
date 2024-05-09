@@ -125,7 +125,7 @@ def apply_prototypes(prototype_dict: dict, tar_dict: dict) -> dict:
         inherit_dict = prototype_dict.get(inherit)
         if inherit_dict == None:
             continue
-        inherit_dict = br.index_with_re(inherit_dict, re.compile(r'aspects|xtriggers|slots'), False)
+        inherit_dict = br.index_with_re(inherit_dict, re.compile(r'aspects|xtriggers|slots|inherits'), False)
         result[key] = br.add_dict(result[key], inherit_dict)
     return result
 
@@ -196,6 +196,7 @@ def storage_core():
     br.keep_key(gathering_dict,          [ 'inherits', 'hints', 'slots' ])
     br.keep_key(prototype_dict,          [ 'inherits', 'aspects', 'slots', 'xtriggers' ])
 
+    prototype_dict     = apply_prototypes(prototype_dict, prototype_dict)
     prototype_dict     = apply_prototypes(prototype_dict, prototype_dict)
     aspecteditems_dict = apply_prototypes(prototype_dict, aspecteditems_dict)
     tome_dict          = apply_prototypes(prototype_dict, tome_dict)
