@@ -1,8 +1,9 @@
 # Boh Browser
 
-A project to browser an search items in game Book of Hours.
+时之书助手
+已有功能
+* 物品查询
+* 配方匹配
 
-## TODO
-* 回忆的性向及其来源
-* 数据记录
-  * 初步实现了汉化文件的存读，文件检索不够完善
+TODO
+* 图形化
